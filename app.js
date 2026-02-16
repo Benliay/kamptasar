@@ -72,19 +72,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- HOME PAGE DYNAMIC CONTENT ---
     const filesSection = document.getElementById('file-tree-root');
+
+    // Helper to fetch content
+    async function fetchContent() {
+        const { data, error } = await _supabase.from('site_content').select('*');
+        if (error) {
+            console.error('Error fetching content:', error);
+            return {};
+        }
+        // Convert array to object key-value
+        return data.reduce((acc, item) => {
+            acc[item.key] = item.value;
+            return acc;
+        }, {});
+    }
+
     if (filesSection) {
-        // Load Intro Content
-        const introTitle = localStorage.getItem('home_introLink_title');
-        const introImage = localStorage.getItem('home_introLink_image');
-        const introText = localStorage.getItem('home_introLink_text');
+        fetchContent().then(content => {
+            // Load Intro Content
+            const introTitle = content['home_introLink_title'];
+            const introImage = content['home_introLink_image'];
+            const introText = content['home_introLink_text'];
 
-        if (introTitle) document.getElementById('intro-title').innerText = introTitle;
-        if (introImage) document.getElementById('intro-image').src = introImage;
-        if (introText) document.getElementById('intro-text').innerHTML = introText;
+            if (introTitle) document.getElementById('intro-title').innerText = introTitle;
+            if (introImage) document.getElementById('intro-image').src = introImage;
+            if (introText) document.getElementById('intro-text').innerHTML = introText;
 
-        // Load Info Content
-        const infoText = localStorage.getItem('home_info_text');
-        if (infoText) document.getElementById('info-content').innerHTML = infoText;
+            // Load Info Content
+            const infoText = content['home_info_text'];
+            if (infoText) document.getElementById('info-content').innerHTML = infoText;
+        });
 
         // Load File Tree
         renderFileTree(false); // false = read-only mode
@@ -100,26 +117,38 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Pre-fill forms
-        document.getElementById('intro-title-input').value = localStorage.getItem('home_introLink_title') || '';
-        document.getElementById('intro-image-input').value = localStorage.getItem('home_introLink_image') || '';
-        document.getElementById('intro-content-input').value = localStorage.getItem('home_introLink_text') || '';
-        document.getElementById('info-content-input').value = localStorage.getItem('home_info_text') || '';
+        // Pre-fill forms from DB
+        fetchContent().then(content => {
+            document.getElementById('intro-title-input').value = content['home_introLink_title'] || '';
+            document.getElementById('intro-image-input').value = content['home_introLink_image'] || '';
+            document.getElementById('intro-content-input').value = content['home_introLink_text'] || '';
+            document.getElementById('info-content-input').value = content['home_info_text'] || '';
+        });
 
         // Save Intro
-        adminContentForm.addEventListener('submit', (e) => {
+        adminContentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            localStorage.setItem('home_introLink_title', document.getElementById('intro-title-input').value);
-            localStorage.setItem('home_introLink_image', document.getElementById('intro-image-input').value);
-            localStorage.setItem('home_introLink_text', document.getElementById('intro-content-input').value);
-            alert('Tanıtım Ayarları Kaydedildi!');
+            const updates = [
+                { key: 'home_introLink_title', value: document.getElementById('intro-title-input').value },
+                { key: 'home_introLink_image', value: document.getElementById('intro-image-input').value },
+                { key: 'home_introLink_text', value: document.getElementById('intro-content-input').value }
+            ];
+
+            const { error } = await _supabase.from('site_content').upsert(updates);
+
+            if (error) alert('Hata: ' + error.message);
+            else alert('Tanıtım Ayarları Kaydedildi!');
         });
 
         // Save Info
-        document.getElementById('admin-info-form').addEventListener('submit', (e) => {
+        document.getElementById('admin-info-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            localStorage.setItem('home_info_text', document.getElementById('info-content-input').value);
-            alert('Bilgilendirme Metni Kaydedildi!');
+            const { error } = await _supabase.from('site_content').upsert([
+                { key: 'home_info_text', value: document.getElementById('info-content-input').value }
+            ]);
+
+            if (error) alert('Hata: ' + error.message);
+            else alert('Bilgilendirme Metni Kaydedildi!');
         });
 
         // Load File Tree (Admin Mode)
@@ -310,47 +339,67 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// --- HELPER FUNCTIONS FOR FILE SYSTEM ATTRIBUTES (GLOBAL) ---
-const mockFileSystemKey = 'mock_file_system';
+// --- HELPER FUNCTIONS FOR FILE SYSTEM (SUPABASE) ---
 
-function getFileSystem() {
-    const fs = localStorage.getItem(mockFileSystemKey);
-    return fs ? JSON.parse(fs) : {
-        "root": {
-            id: "root",
-            name: "Ana Dizin",
-            type: "folder",
-            children: []
+// 1. Fetch File System Structure
+async function getFileSystem() {
+    // Fetch Folders
+    const { data: folders, error: folderError } = await _supabase.from('folders').select('*').order('created_at');
+    // Fetch Files
+    const { data: files, error: fileError } = await _supabase.from('files').select('*').order('created_at');
+
+    if (folderError || fileError) {
+        console.error('Error fetching FS:', folderError, fileError);
+        return { root: { id: 'root', name: 'Ana Dizin', type: 'folder', children: [] } };
+    }
+
+    // Build Tree
+    const root = { id: 'root', name: 'Ana Dizin', type: 'folder', children: [] };
+    const folderMap = { 'root': root };
+
+    // Initialize all folder objects
+    folders.forEach(f => {
+        folderMap[f.id] = { ...f, type: 'folder', children: [] };
+    });
+
+    // Link folders to parents
+    folders.forEach(f => {
+        const parentId = f.parent_id || 'root'; // Assuming null parent_id means root
+        if (folderMap[parentId]) {
+            folderMap[parentId].children.push(folderMap[f.id]);
         }
-    };
+    });
+
+    // Add files to folders
+    files.forEach(f => {
+        const parentId = f.folder_id || 'root';
+        const fileObj = { ...f, type: 'file' };
+        if (folderMap[parentId]) {
+            folderMap[parentId].children.push(fileObj);
+        }
+    });
+
+    return { root };
 }
 
-function saveFileSystem(fs) {
-    localStorage.setItem(mockFileSystemKey, JSON.stringify(fs));
-}
-
-function addFolder() {
+async function addFolder() {
     const name = document.getElementById('new-folder-name').value;
-    // For simplicity, we just add to root for now, or need a way to select parent
     if (!name) return alert('Klasör adı giriniz');
 
-    const fs = getFileSystem();
-    const newFolder = {
-        id: 'folder_' + Date.now(),
-        name: name,
-        type: 'folder',
-        children: []
-    };
+    // Create folder logic
+    const { error } = await _supabase.from('folders').insert([{ name: name, parent_id: null }]); // null = root
 
-    fs.root.children.push(newFolder);
-    saveFileSystem(fs);
-    alert('Klasör eklendi');
-    renderFileTree(true);
-    populateFolderSelect();
-    document.getElementById('new-folder-name').value = '';
+    if (error) {
+        alert('Hata: ' + error.message);
+    } else {
+        alert('Klasör eklendi');
+        renderFileTree(true);
+        populateFolderSelect();
+        document.getElementById('new-folder-name').value = '';
+    }
 }
 
-function addNewFileFromAdmin() {
+async function addNewFileFromAdmin() {
     const desc = document.getElementById('admin-upload-desc').value;
     const coverInput = document.getElementById('admin-upload-image');
     const contentInput = document.getElementById('admin-upload-file');
@@ -361,99 +410,84 @@ function addNewFileFromAdmin() {
     const coverFile = coverInput.files.length > 0 ? coverInput.files[0] : null;
     const contentFile = contentInput.files[0];
 
-    // Read Both Files Helper
-    const readFile = (file) => {
-        return new Promise((resolve) => {
-            if (!file) { resolve(null); return; }
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(file);
-        });
-    };
+    // 1. Upload Content
+    // Sanitize filename
+    const safeName = contentFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const contentPath = `files/${Date.now()}_${safeName}`;
+    const { data: contentData, error: contentError } = await _supabase.storage
+        .from('uploads')
+        .upload(contentPath, contentFile);
 
-    Promise.all([readFile(coverFile), readFile(contentFile)]).then(([coverBase64, contentBase64]) => {
-        const fs = getFileSystem();
+    if (contentError) return alert('Dosya yükleme hatası: ' + contentError.message);
 
-        const newFile = {
-            id: 'file_' + Date.now(),
-            name: contentFile.name,
-            type: 'file',
+    const contentUrl = _supabase.storage.from('uploads').getPublicUrl(contentPath).data.publicUrl;
 
-            // New structure
-            coverImg: coverBase64, // Thumbnail
-            contentData: contentBase64, // Actual Content
-            contentType: contentFile.type,
+    // 2. Upload Cover (Optional)
+    let coverUrl = null;
+    if (coverFile) {
+        const safeCoverName = coverFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const coverPath = `covers/${Date.now()}_${safeCoverName}`;
+        const { error: coverError } = await _supabase.storage
+            .from('uploads')
+            .upload(coverPath, coverFile);
 
-            // Legacy/Fallback
-            url: '#',
-            img: coverBase64,
-
-            desc: desc,
-            uploadDate: new Date().toLocaleDateString('tr-TR')
-        };
-
-        if (parentId === 'root') {
-            fs.root.children.push(newFile);
-        } else {
-            const parent = findFolder(fs.root, parentId);
-            if (parent) {
-                parent.children.push(newFile);
-            } else {
-                return alert('Klasör bulunamadı');
-            }
+        if (!coverError) {
+            coverUrl = _supabase.storage.from('uploads').getPublicUrl(coverPath).data.publicUrl;
         }
+    }
 
-        saveFileSystem(fs);
+    // 3. Insert into DB
+    const { error: dbError } = await _supabase.from('files').insert([{
+        name: contentFile.name,
+        description: desc,
+        folder_id: parentId === 'root' ? null : parentId,
+        file_url: contentUrl,
+        cover_url: coverUrl,
+        mime_type: contentFile.type
+    }]);
+
+    if (dbError) {
+        alert('Veritabanı hatası: ' + dbError.message);
+    } else {
         alert('Dosya ve Kapak başarıyla yüklendi');
         renderFileTree(true);
-
         // Reset
         document.getElementById('admin-upload-desc').value = '';
         document.getElementById('admin-upload-image').value = '';
         document.getElementById('admin-upload-file').value = '';
-    });
-}
-
-function findFolder(node, id) {
-    if (node.id === id) return node;
-    if (node.children) {
-        for (let child of node.children) {
-            if (child.type === 'folder') {
-                const found = findFolder(child, id);
-                if (found) return found;
-            }
-        }
     }
-    return null;
 }
 
-function deleteNode(id) {
+// Deprecated: findFolder sync logic replaced by getFileSystem async builder
+
+async function deleteNode(id, type) {
     if (!confirm('Bu öğeyi silmek istediğinize emin misiniz?')) return;
-    const fs = getFileSystem();
-    deleteNodeRecursive(fs.root, id);
-    saveFileSystem(fs);
-    renderFileTree(true);
-    populateFolderSelect();
-}
 
-function deleteNodeRecursive(parent, id) {
-    if (!parent.children) return;
-    const idx = parent.children.findIndex(x => x.id === id);
-    if (idx > -1) {
-        parent.children.splice(idx, 1);
-        return;
+    // If it's a folder, we might need recursive delete. 
+    // Supabase Cascade Delete on foreign keys handles files if configured, 
+    // but default schema might not.
+    // Let's try simple delete.
+
+    let error;
+    if (type === 'folder') {
+        // Warning: This implies we need to know the Type passed from the button
+        const { error: err } = await _supabase.from('folders').delete().eq('id', id);
+        error = err;
+    } else {
+        const { error: err } = await _supabase.from('files').delete().eq('id', id);
+        error = err;
     }
-    parent.children.forEach(child => {
-        if (child.type === 'folder') deleteNodeRecursive(child, id);
-    });
-}
 
-function resetFileSystem() {
-    if (confirm('Tüm dosya sistemi silinecek! Onaylıyor musunuz?')) {
-        localStorage.removeItem(mockFileSystemKey);
+    if (error) {
+        alert('Silme hatası: ' + error.message);
+    } else {
         renderFileTree(true);
         populateFolderSelect();
     }
+}
+
+function resetFileSystem() {
+    alert('Bu özellik veritabanı modunda devre dışı bırakıldı (Güvenlik).');
 }
 
 // --- RENDER LOGIC ---
@@ -461,8 +495,8 @@ function resetFileSystem() {
 // Global state for User View current folder
 let currentUserFolderId = 'root';
 
-function renderFileTree(isAdmin) {
-    const fs = getFileSystem();
+async function renderFileTree(isAdmin) {
+    const fs = await getFileSystem();
     const container = isAdmin ? document.getElementById('admin-file-tree') : document.getElementById('file-tree-root');
     if (!container) return;
 
@@ -488,7 +522,8 @@ function renderNodeAdmin(node) {
         // Item UI
         const isFolder = node.type === 'folder';
         const icon = isFolder ? '<i class="fas fa-folder text-yellow-500 mr-2"></i>' : '<i class="fas fa-file-alt text-blue-400 mr-2"></i>';
-        const deleteBtn = `<button onclick="deleteNode('${node.id}')" class="ml-2 text-red-500 hover:text-red-400 text-xs"><i class="fas fa-trash"></i></button>`;
+        // Pass type to deleteNode
+        const deleteBtn = `<button onclick="deleteNode('${node.id}', '${node.type}')" class="ml-2 text-red-500 hover:text-red-400 text-xs"><i class="fas fa-trash"></i></button>`;
 
         const contentDiv = document.createElement('div');
         contentDiv.className = `flex items-center group ${isFolder ? 'cursor-pointer hover:bg-slate-800/50 rounded p-1' : ''}`;
@@ -524,15 +559,20 @@ function renderUserView(rootNode, container) {
     const navBar = document.createElement('div');
     navBar.className = "flex items-center space-x-2 mb-6 overflow-x-auto pb-2 border-b border-slate-800";
 
-    // Flatten folders to find current path? 
-    // For simplicity: Root -> [List of Top Folders] -> [Selected Folder Content]
-    // We will render all Root Children that are FOLDERS as tabs.
-    // And render the content of the 'currentUserFolderId'.
-
     // Find the current active folder object
     let activeFolder = rootNode;
+    // Helper traverse to find node in new async structure
+    const findNode = (n, id) => {
+        if (n.id === id) return n;
+        for (let c of n.children) {
+            const found = findNode(c, id);
+            if (found) return found;
+        }
+        return null;
+    }
+
     if (currentUserFolderId !== 'root') {
-        const found = findFolder(rootNode, currentUserFolderId);
+        const found = findNode(rootNode, currentUserFolderId);
         if (found) activeFolder = found;
     }
 
@@ -558,7 +598,6 @@ function renderUserView(rootNode, container) {
     container.appendChild(navBar);
 
     // 2. Grid Content (Files in active folder)
-    // If root, maybe show all files? Or just files in root? Let's show files in active folder.
     const grid = document.createElement('div');
     grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
 
@@ -570,10 +609,11 @@ function renderUserView(rootNode, container) {
         files.forEach(file => {
             const card = document.createElement('div');
             card.className = "group relative bg-slate-800/30 border border-slate-700/50 rounded-xl overflow-hidden hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 transition-all duration-300 cursor-pointer";
-            card.onclick = () => window.open(`detail.html?id=${file.id}`, 'FileDetail', 'width=1000,height=800');
+            // Use file.file_url for detail view
+            card.onclick = () => window.open(file.file_url, '_blank');
 
             // Image Area - Prefer Cover Image
-            const imgUrl = file.coverImg || file.img || 'https://placehold.co/600x400/1e293b/475569?text=No+Preview';
+            const imgUrl = file.cover_url || file.coverImg || 'https://placehold.co/600x400/1e293b/475569?text=No+Preview';
 
             card.innerHTML = `
                 <div class="h-48 overflow-hidden relative">
@@ -587,9 +627,9 @@ function renderUserView(rootNode, container) {
                     </div>
                 </div>
                 <div class="p-4">
-                    <p class="text-xs text-slate-400 line-clamp-2 h-8 mb-3">${file.desc || 'Açıklama yok...'}</p>
+                    <p class="text-xs text-slate-400 line-clamp-2 h-8 mb-3">${file.description || file.desc || 'Açıklama yok...'}</p>
                     <div class="flex items-center justify-end border-t border-slate-700/50 pt-3">
-                        <span class="text-[10px] text-slate-500">${file.uploadDate || ''}</span>
+                        <span class="text-[10px] text-slate-500">${new Date(file.created_at || Date.now()).toLocaleDateString('tr-TR')}</span>
                     </div>
                 </div>
             `;
@@ -606,29 +646,26 @@ function toggleFolder(id) {
     if (el) el.classList.toggle('hidden');
 }
 
-function populateFolderSelect() {
+async function populateFolderSelect() {
     const select = document.getElementById('target-folder-select');
     if (!select) return;
 
     select.innerHTML = '<option value="root">Ana Dizin</option>';
-    const fs = getFileSystem();
+    const fs = await getFileSystem();
 
-    // Flat traverse for options
-    traverseFolders(fs.root, (folder) => {
-        if (folder.id !== 'root') {
+    // Helpers to recurse
+    const traverse = (node, depth) => {
+        if (node.type === 'folder' && node.id !== 'root') {
             const option = document.createElement('option');
-            option.value = folder.id;
-            option.innerText = folder.name;
+            option.value = node.id;
+            option.innerText = "-".repeat(depth) + " " + node.name;
             select.appendChild(option);
         }
-    });
+        if (node.children) {
+            node.children.forEach(c => traverse(c, depth + 1));
+        }
+    };
+
+    traverse(fs.root, 0);
 }
 
-function traverseFolders(node, callback) {
-    if (node.type === 'folder') {
-        callback(node);
-        if (node.children) {
-            node.children.forEach(child => traverseFolders(child, callback));
-        }
-    }
-}
