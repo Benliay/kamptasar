@@ -73,20 +73,8 @@
             }
         }
 
-        // Developer Tool: Simulate Verification (Since we don't have a real backend sending emails)
-        // Add a button to simulate clicking the link
-        const container = document.querySelector('.glass-panel');
-        const devBtn = document.createElement('button');
-        devBtn.innerText = "Geliştirici: Doğrulamayı Onayla (Simule Et)";
-        devBtn.className = "mt-4 w-full bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 font-semibold py-2 px-4 rounded-lg text-sm transition-colors";
-        devBtn.onclick = () => {
-            if (email) {
-                window.location.href = `verify-email.html?email=${email}&verify=true`;
-            } else {
-                alert('Email parametresi bulunamadı.');
-            }
-        };
-        container.appendChild(devBtn);
+        // Developer Button Removed for Production
+        // The user must click the link in their email to verify.
     </script>
 </body>
 
