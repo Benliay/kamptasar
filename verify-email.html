@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Onayı - Web Projesi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body
+    class="h-screen w-full flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2672&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat relative">
+
+    <!-- Dark Overlay -->
+    <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"></div>
+
+    <!-- Verify Container -->
+    <div class="relative z-10 w-full max-w-md p-8 glass-panel rounded-2xl shadow-2xl fade-in mx-4 text-center">
+        <div class="mb-6 flex justify-center">
+            <div class="w-20 h-20 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                    </path>
+                </svg>
+            </div>
+        </div>
+
+        <h1 class="text-3xl font-bold gradient-text mb-4">Emailinizi Kontrol Edin</h1>
+        <p class="text-slate-300 mb-6">
+            Kayıt işlemini tamamlamak için <span id="user-email" class="font-semibold text-white">email
+                adresinize</span> bir onay bağlantısı gönderdik.
+        </p>
+
+        <div class="space-y-4">
+            <button onclick="window.location.href='index.html'"
+                class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-3 px-4 rounded-lg border border-slate-700 transition-colors">
+                Giriş Sayfasına Dön
+            </button>
+            <p class="text-sm text-slate-500">
+                Email gelmedi mi? <button class="text-indigo-400 hover:text-indigo-300 font-medium">Tekrar
+                    Gönder</button>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Get email from URL params
+        // Get email from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+        const verify = urlParams.get('verify'); // Check if we are in verification mode
+
+        if (email) {
+            document.getElementById('user-email').innerText = email;
+
+            if (verify === 'true') {
+                // Perform Verification
+                let userKey = 'user_' + email;
+                let userJson = localStorage.getItem(userKey);
+
+                if (userJson) {
+                    let user = JSON.parse(userJson);
+                    user.isVerified = true;
+                    localStorage.setItem(userKey, JSON.stringify(user));
+
+                    alert('Email başarıyla doğrulandı! Şimdi giriş yapabilirsiniz.');
+                    window.location.href = 'index.html';
+                } else {
+                    alert('Kullanıcı bulunamadı!');
+                }
+            }
+        }
+
+        // Developer Tool: Simulate Verification (Since we don't have a real backend sending emails)
+        // Add a button to simulate clicking the link
+        const container = document.querySelector('.glass-panel');
+        const devBtn = document.createElement('button');
+        devBtn.innerText = "Geliştirici: Doğrulamayı Onayla (Simule Et)";
+        devBtn.className = "mt-4 w-full bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 font-semibold py-2 px-4 rounded-lg text-sm transition-colors";
+        devBtn.onclick = () => {
+            if (email) {
+                window.location.href = `verify-email.html?email=${email}&verify=true`;
+            } else {
+                alert('Email parametresi bulunamadı.');
+            }
+        };
+        container.appendChild(devBtn);
+    </script>
+</body>
+
+</html>

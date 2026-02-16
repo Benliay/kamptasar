@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İçerik Yönetimi - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200 h-screen flex overflow-hidden">
+
+    <!-- Sidebar (Copy of Admin Users but with active state on Content) -->
+    <aside class="w-64 bg-slate-800/50 border-r border-slate-700/50 hidden md:flex flex-col">
+        <div class="p-6">
+            <h2 class="text-2xl font-bold gradient-text">Proje Paneli</h2>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-2 mt-4">
+            <a href="dashboard.html"
+                class="flex items-center space-x-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-100 rounded-lg transition-colors">
+                <i class="fas fa-chart-line w-5 text-center"></i>
+                <span class="font-medium">Genel Bakış</span>
+            </a>
+
+            <a href="data.html"
+                class="flex items-center space-x-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-100 rounded-lg transition-colors">
+                <i class="fas fa-database w-5 text-center"></i>
+                <span>Veriler</span>
+            </a>
+
+            <a href="admin-users.html"
+                class="flex items-center space-x-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-100 rounded-lg transition-colors">
+                <i class="fas fa-users w-5 text-center"></i>
+                <span>Kullanıcı Yönetimi</span>
+            </a>
+
+            <a href="#"
+                class="flex items-center space-x-3 px-4 py-3 bg-red-600/10 text-red-400 rounded-lg border border-red-600/20">
+                <i class="fas fa-edit w-5 text-center"></i>
+                <span>İçerik Yönetimi</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-slate-700/50">
+            <a href="index.html" class="flex items-center space-x-3 text-red-400 hover:text-red-300 transition-colors">
+                <i class="fas fa-sign-out-alt w-5 text-center"></i>
+                <span>Çıkış Yap</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto bg-slate-900 relative">
+        <header
+            class="sticky top-0 z-20 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-6 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-slate-100">İçerik Yönetimi</h1>
+            <div class="flex items-center gap-3">
+                <a href="home.html" target="_blank"
+                    class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded transition-colors">
+                    Sitede Gör <i class="fas fa-external-link-alt ml-1"></i>
+                </a>
+                <div id="user-avatar"
+                    class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold">
+                    SA
+                </div>
+            </div>
+        </header>
+
+        <div class="p-6 max-w-5xl mx-auto space-y-8">
+
+            <!-- 1. INTRO EDIT -->
+            <section class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-bold text-indigo-400 mb-4 border-b border-slate-700 pb-2">1. Tanıtım Sayfası
+                    Düzenle</h3>
+                <form id="admin-intro-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">Başlık</label>
+                        <input type="text" id="intro-title-input"
+                            class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">Görsel URL</label>
+                        <input type="text" id="intro-image-input"
+                            class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">Metin İçeriği (HTML
+                            Kullanılabilir)</label>
+                        <textarea id="intro-content-input" rows="4"
+                            class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white font-mono text-sm"></textarea>
+                    </div>
+                    <div class="text-right">
+                        <button type="submit"
+                            class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded shadow transition-colors">Kaydet</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 2. INFO EDIT -->
+            <section class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-bold text-indigo-400 mb-4 border-b border-slate-700 pb-2">2. Bilgilendirme
+                    Sayfası Düzenle</h3>
+                <form id="admin-info-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1">Bilgilendirme Metni (HTML
+                            Kullanılabilir)</label>
+                        <textarea id="info-content-input" rows="6"
+                            class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white font-mono text-sm"></textarea>
+                    </div>
+                    <div class="text-right">
+                        <button type="submit"
+                            class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded shadow transition-colors">Kaydet</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 3. FILE MANAGER -->
+            <section class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-bold text-emerald-400 mb-4 border-b border-slate-700 pb-2">3. Tasarım Dosyaları
+                    Yönetimi</h3>
+
+                <div class="flex flex-col md:flex-row gap-6">
+                    <!-- Actions -->
+                    <div class="md:w-1/3 space-y-4">
+                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                            <h4 class="text-sm font-bold text-white mb-3">Klasör Ekle</h4>
+                            <input type="text" id="new-folder-name" placeholder="Klasör Adı"
+                                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white mb-2">
+                            <input type="text" id="new-folder-parent"
+                                placeholder="Üst Klasör ID (Opsiyonel - Boşsa Kök)"
+                                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white mb-2 hidden">
+                            <button onclick="addFolder()"
+                                class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-2 rounded">Oluştur</button>
+                        </div>
+
+                        <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                            <h4 class="text-sm font-bold text-white mb-3">Dosya Ekle (Link)</h4>
+                            <input type="text" id="new-file-name" placeholder="Dosya Adı"
+                                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white mb-2">
+                            <input type="text" id="new-file-url" placeholder="Dosya URL / Açıklama"
+                                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white mb-2">
+
+                            <select id="target-folder-select"
+                                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-slate-400 mb-2">
+                                <option value="root">Ana Dizin</option>
+                            </select>
+
+                            <button onclick="addFile()"
+                                class="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm py-2 rounded">Ekle</button>
+                        </div>
+                    </div>
+
+                    <!-- Tree View Preview -->
+                    <div class="md:w-2/3 bg-slate-800/30 rounded-lg p-4 border border-slate-700 min-h-[300px]">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-mono text-slate-500">Önizleme / Silme İşlemleri</span>
+                            <button onclick="resetFileSystem()"
+                                class="text-xs text-red-500 hover:text-red-400 underline">Tümünü Sıfırla</button>
+                        </div>
+                        <div id="admin-file-tree" class="space-y-2 text-sm">
+                            <!-- Tree Renders Here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+        // Inline script to handle file system calls to app.js accessible functions
+        // But mainly main logic will be in app.js
+    </script>
+</body>
+
+</html>

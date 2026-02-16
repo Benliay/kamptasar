@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dosya Detayı - Web Projesi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-slate-900 text-slate-200 h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="glass-panel p-8 rounded-2xl max-w-4xl w-full relative shadow-2xl">
+        <button onclick="window.close()"
+            class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+            <i class="fas fa-times text-xl"></i>
+        </button>
+
+        <div class="flex flex-col md:flex-row gap-8">
+            <!-- Image Side -->
+            <div class="md:w-1/2">
+                <div class="rounded-xl overflow-hidden shadow-lg border border-slate-700/50 h-[300px] md:h-[400px]">
+                    <img id="detail-image" src="" alt="Dosya Önizlemesi" class="w-full h-full object-cover">
+                </div>
+            </div>
+
+            <!-- Content Side -->
+            <div class="md:w-1/2 flex flex-col">
+                <h1 id="detail-title" class="text-3xl font-bold gradient-text mb-4">Dosya Başlığı</h1>
+
+                <div class="flex items-center text-xs text-slate-500 mb-6 space-x-4">
+                    <span id="detail-date"><i class="far fa-calendar-alt mr-1"></i> 01.01.2024</span>
+                    <span id="detail-path"
+                        class="font-mono text-emerald-500/80 bg-emerald-500/10 px-2 py-0.5 rounded">uploads/file.png</span>
+                </div>
+
+                <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50 flex-1 mb-6">
+                    <h3 class="text-sm font-semibold text-indigo-400 mb-2">Açıklama</h3>
+                    <p id="detail-desc" class="text-slate-300 leading-relaxed text-sm">
+                        Dosya açıklaması yükleniyor...
+                    </p>
+                </div>
+
+                <div class="mt-auto">
+                    <a id="download-btn" href="#" download
+                        class="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-indigo-500/30 transition-all duration-300">
+                        <i class="fas fa-download mr-2"></i> İndir
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load data from URL params or LocalStorage buffer
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileId = urlParams.get('id');
+
+            if (!fileId) {
+                alert('Dosya bulunamadı!');
+                window.close();
+            }
+
+            // Find file in FS
+            const fs = JSON.parse(localStorage.getItem('mock_file_system'));
+            let file = null;
+
+            // Helper to find deep
+            const findNode = (node) => {
+                if (node.id === fileId) return node;
+                if (node.children) {
+                    for (let child of node.children) {
+                        const found = findNode(child);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            }
+
+            file = findNode(fs.root);
+
+            if (file) {
+                document.getElementById('detail-title').innerText = file.name;
+                document.getElementById('detail-desc').innerText = file.desc || 'Açıklama bulunmuyor.';
+
+                // DISPLAY LOGIC:
+                let contentIsImage = false;
+                if (file.contentType && file.contentType.startsWith('image/')) {
+                    contentIsImage = true;
+                }
+
+                const previewEl = document.getElementById('detail-image');
+
+                if (contentIsImage && file.contentData) {
+                    // Show the Actual Content File
+                    previewEl.src = file.contentData;
+                } else if (file.coverImg) {
+                    // Fallback to Cover
+                    previewEl.src = file.coverImg;
+                } else {
+                    previewEl.src = 'https://placehold.co/600x400/1e293b/475569?text=No+Preview';
+                }
+
+                document.getElementById('detail-date').innerHTML = `<i class="far fa-calendar-alt mr-1"></i> ${file.uploadDate || 'Tarih Yok'}`;
+
+                // Mock Path
+                const mockPath = `uploads/${file.name}`;
+                document.getElementById('detail-path').innerText = mockPath;
+
+                // DOWNLOAD ACTION -> Always Content File
+                const downloadLink = document.getElementById('download-btn');
+                if (file.contentData) {
+                    downloadLink.href = file.contentData;
+                    downloadLink.download = file.name;
+                } else if (file.url) {
+                    downloadLink.href = file.url;
+                    downloadLink.target = "_blank";
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
