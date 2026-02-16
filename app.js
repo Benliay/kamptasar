@@ -104,36 +104,71 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Bu sayfaya erişim yetkiniz yok!');
             window.location.href = 'home.html';
         } else {
-            // Load Users from LocalStorage
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('user_')) {
-                    try {
-                        const user = JSON.parse(localStorage.getItem(key));
-                        const tr = document.createElement('tr');
-                        tr.className = "hover:bg-slate-800/30 transition-colors";
-                        tr.innerHTML = `
-                            <td class="p-4 font-medium text-white">${user.name}</td>
-                            <td class="p-4 text-slate-400">${user.email}</td>
-                            <td class="p-4">
-                                ${user.isVerified
+            // Load Users from API
+            fetch('/api/users')
+                .then(res => res.json())
+                .then(users => {
+                    if (Array.isArray(users)) {
+                        users.forEach(user => {
+                            const tr = document.createElement('tr');
+                            tr.className = "hover:bg-slate-800/30 transition-colors";
+
+                            // Status Badge
+                            const statusBadge = user.isVerified
                                 ? '<span class="px-2 py-1 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Onaylı</span>'
-                                : '<span class="px-2 py-1 rounded text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">Onay Bekliyor</span>'
+                                : '<span class="px-2 py-1 rounded text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">Onay Bekliyor</span>';
+
+                            // Action Button (Approve if not verified)
+                            let actionBtn = '';
+                            if (!user.isVerified) {
+                                actionBtn = `<button onclick="approveUser('${user.email}')" class="mr-2 text-emerald-400 hover:text-emerald-300 text-sm font-medium px-3 py-1 rounded border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Onayla</button>`;
                             }
-                            </td>
-                            <td class="p-4 text-right">
-                                <button onclick="deleteUser('${key}')" class="text-red-400 hover:text-red-300 text-sm font-medium px-3 py-1 rounded border border-red-500/30 hover:bg-red-500/10 transition-all">
-                                    Sil
-                                </button>
-                            </td>
-                        `;
-                        userListBody.appendChild(tr);
-                    } catch (e) {
-                        console.error("Error parsing user data", e);
+
+                            tr.innerHTML = `
+                                <td class="p-4 font-medium text-white">${user.name}</td>
+                                <td class="p-4 text-slate-400">${user.email}</td>
+                                <td class="p-4">${statusBadge}</td>
+                                <td class="p-4 text-right">
+                                    ${actionBtn}
+                                    <button onclick="deleteUser('${user.email}')" class="text-red-400 hover:text-red-300 text-sm font-medium px-3 py-1 rounded border border-red-500/30 hover:bg-red-500/10 transition-all">
+                                        Sil
+                                    </button>
+                                </td>
+                            `;
+                            userListBody.appendChild(tr);
+                        });
                     }
-                }
-            });
+                })
+                .catch(err => console.error('Failed to load users:', err));
         }
     }
+
+    // Expose actions to window
+    window.deleteUser = function (email) {
+        if (confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')) {
+            fetch('/api/users', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            }).then(res => {
+                if (res.ok) window.location.reload();
+                else alert('Silme işlemi başarısız');
+            });
+        }
+    };
+
+    window.approveUser = function (email) {
+        if (confirm('Bu kullanıcıyı onaylamak istiyor musunuz?')) {
+            fetch('/api/users', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, action: 'approve' })
+            }).then(res => {
+                if (res.ok) window.location.reload();
+                else alert('Onaylama işlemi başarısız');
+            });
+        }
+    };
 
     // Expose deleteUser to window so onclick works
     window.deleteUser = function (key) {
@@ -188,41 +223,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     return; // Stop execution here for admin flow
                 }
 
-                // Get stored user data (Mock Database)
-                const storedUserJSON = localStorage.getItem('user_' + email);
+                // Get stored user data (Mock Database) - REPLACED WITH API LOGIN
+                fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                })
+                    .then(res => res.json().then(data => ({ status: res.status, body: data })))
+                    .then(({ status, body }) => {
+                        if (status === 200) {
+                            // Login Success
+                            localStorage.setItem('currentUser', body.user.name);
+                            localStorage.setItem('userName', body.user.name);
 
-                if (!storedUserJSON) {
-                    alert('Kullanıcı bulunamadı! Lütfen önce kayıt olun.');
-                    return;
-                }
+                            const btn = loginForm.querySelector('button');
+                            btn.innerText = 'Giriş Yapılıyor...';
+                            btn.disabled = true;
 
-                const storedUser = JSON.parse(storedUserJSON);
-
-                if (storedUser.password !== password) {
-                    alert('Hatalı şifre!');
-                    return;
-                }
-
-                // Login Success
-
-                // CHECK EMAIL VERIFICATION
-                if (!storedUser.isVerified) {
-                    alert('Lütfen giriş yapmadan önce e-posta adresinizi doğrulayın! Email kutunuzu kontrol edin.');
-                    return;
-                }
-
-                localStorage.setItem('currentUser', storedUser.name); // Set active session user
-                // Also update legacy userName for compatibility
-                localStorage.setItem('userName', storedUser.name);
-
-                const btn = loginForm.querySelector('button');
-                btn.innerText = 'Giriş Yapılıyor...';
-                btn.disabled = true;
-
-                setTimeout(() => {
-                    // Update: Redirect to home.html instead of dashboard.html
-                    window.location.href = 'home.html';
-                }, 1000);
+                            setTimeout(() => {
+                                window.location.href = 'home.html';
+                            }, 1000);
+                        } else {
+                            // Error (Invalid credentials or Not Verified)
+                            alert(body.error || 'Giriş başarısız!');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Login error:', err);
+                        alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                    });
             }
         });
     }
@@ -255,60 +284,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 4. Save User to LocalStorage (Mock DB)
-            const newUser = {
-                name: nameInput ? nameInput.value : 'Kullanıcı',
-                email: email,
-                password: password, // In real app, never store plain text passwords!
-                isVerified: false // Default to false until verified
-            };
-            localStorage.setItem('user_' + email, JSON.stringify(newUser));
-
-            // EmailJS Sending Logic
+            // 4. Save User to API
             const btn = registerForm.querySelector('button');
             const originalText = btn.innerText;
             btn.innerText = 'Kayıt Olunuyor...';
             btn.disabled = true;
 
-            // Generate Verification Link (Pointing to Vercel App)
-            // CHANGE THIS URL IF YOUR DOMAIN CHANGES
-            const APP_URL = "https://kamptasar.vercel.app";
-            const verifyLink = `${APP_URL}/verify-email.html?email=${encodeURIComponent(email)}&verify=true`;
-
-            // Parameters matching your EmailJS template
-            const templateParams = {
-                to_email: email,
-                from_name: "Web Projesi",
-                message: "Hesabınız başarıyla oluşturuldu. Lütfen aşağıdaki linke tıklayarak doğrulama yapın.",
-                to_name: newUser.name,
-                verify_link: verifyLink // Make sure your EmailJS template has {{verify_link}} variable!
-            };
-
-            // REPLACE WITH YOUR REAL EMAILJS KEYS
-            // Get these from https://dashboard.emailjs.com/admin
-            const SERVICE_ID = "YOUR_SERVICE_ID";   // e.g., "service_gmail"
-            const TEMPLATE_ID = "YOUR_TEMPLATE_ID"; // e.g., "template_welcome"
-
-            if (SERVICE_ID === "YOUR_SERVICE_ID") {
-                console.warn("EmailJS Keys eksik! Mock modunda çalışıyor.");
-                alert("Geliştirici Notu: EmailJS Keyleri app.js dosyasında ayarlanmamış! Konsoldan linki alabilirsiniz.");
-                console.log("Doğrulama Linki:", verifyLink);
-
-                // For testing/mocking without keys, redirect to mock verify page
-                setTimeout(() => {
-                    window.location.href = `verify-email.html?email=${encodeURIComponent(email)}`;
-                }, 1000);
-                return;
-            }
-
-            emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams)
-                .then(function () {
-                    console.log('Email sent successfully!');
-                    // Redirect to verification page but instruct user to check email
-                    window.location.href = `verify-email.html?email=${encodeURIComponent(email)}`;
-                }, function (error) {
-                    console.error('Email sending failed:', error);
-                    alert('Email gönderilemedi: ' + JSON.stringify(error));
+            fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: nameInput ? nameInput.value : 'Kullanıcı',
+                    email: email,
+                    password: password
+                })
+            })
+                .then(res => res.json().then(data => ({ status: res.status, body: data })))
+                .then(({ status, body }) => {
+                    if (status === 201) {
+                        // Success
+                        alert('Kayıt başarılı! Yönetici onayı bekleniyor. Onaylandığında giriş yapabileceksiniz.');
+                        window.location.href = 'index.html';
+                    } else {
+                        // Error
+                        alert('Kayıt hatası: ' + (body.error || 'Bilinmeyen hata'));
+                        btn.innerText = originalText;
+                        btn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    console.error('Register error:', err);
+                    alert('Kayıt işlemi sırasında bir hata oluştu.');
                     btn.innerText = originalText;
                     btn.disabled = false;
                 });
