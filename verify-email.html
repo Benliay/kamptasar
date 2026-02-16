@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Onayı - Web Projesi</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -47,34 +48,11 @@
 
     <script>
         // Get email from URL params
-        // Get email from URL params
         const urlParams = new URLSearchParams(window.location.search);
         const email = urlParams.get('email');
-        const verify = urlParams.get('verify'); // Check if we are in verification mode
-
         if (email) {
             document.getElementById('user-email').innerText = email;
-
-            if (verify === 'true') {
-                // Perform Verification
-                let userKey = 'user_' + email;
-                let userJson = localStorage.getItem(userKey);
-
-                if (userJson) {
-                    let user = JSON.parse(userJson);
-                    user.isVerified = true;
-                    localStorage.setItem(userKey, JSON.stringify(user));
-
-                    alert('Email başarıyla doğrulandı! Şimdi giriş yapabilirsiniz.');
-                    window.location.href = 'index.html';
-                } else {
-                    alert('Kullanıcı bulunamadı!');
-                }
-            }
         }
-
-        // Developer Button Removed for Production
-        // The user must click the link in their email to verify.
     </script>
 </body>
 

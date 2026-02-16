@@ -2,10 +2,41 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App initialized');
 
+    const SUPABASE_URL = 'https://pidkikybaimfqcdvzoew.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_1sO5ONgAImG22qIS_v7P0w_bYC7N3mU'; // Provided by User
+
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     // Check for dashboard greeting and logic
     const greetingElement = document.getElementById('user-greeting');
     const avatarElement = document.getElementById('user-avatar');
     const adminMenu = document.getElementById('admin-menu-item');
+
+    // AUTH STATE CHANGE LISTENER
+    _supabase.auth.onAuthStateChange((event, session) => {
+        console.log('Auth Event:', event, session);
+        if (event === 'SIGNED_IN' && session) {
+            const user = session.user;
+            const displayName = user.user_metadata.full_name || user.email.split('@')[0];
+
+            // Sync with LocalStorage for compatibility with existing UI logic
+            localStorage.setItem('currentUser', displayName);
+            localStorage.setItem('userName', displayName);
+            localStorage.setItem('userEmail', user.email);
+
+            // Redirect if on login/register page
+            if (window.location.pathname.includes('index.html') || window.location.pathname.includes('register.html')) {
+                window.location.href = 'home.html';
+            }
+        } else if (event === 'SIGNED_OUT') {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userName');
+            localStorage.removeItem('userEmail');
+            if (!window.location.pathname.includes('index.html') && !window.location.pathname.includes('register.html')) {
+                window.location.href = 'index.html';
+            }
+        }
+    });
 
     // Get Current User
     const currentUser = localStorage.getItem('currentUser');
@@ -104,77 +135,52 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Bu sayfaya erişim yetkiniz yok!');
             window.location.href = 'home.html';
         } else {
-            // Load Users from API
-            fetch('/api/users')
-                .then(res => res.json())
-                .then(users => {
-                    if (Array.isArray(users)) {
-                        users.forEach(user => {
-                            const tr = document.createElement('tr');
-                            tr.className = "hover:bg-slate-800/30 transition-colors";
-
-                            // Status Badge
-                            const statusBadge = user.isVerified
-                                ? '<span class="px-2 py-1 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Onaylı</span>'
-                                : '<span class="px-2 py-1 rounded text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">Onay Bekliyor</span>';
-
-                            // Action Button (Approve if not verified)
-                            let actionBtn = '';
-                            if (!user.isVerified) {
-                                actionBtn = `<button onclick="approveUser('${user.email}')" class="mr-2 text-emerald-400 hover:text-emerald-300 text-sm font-medium px-3 py-1 rounded border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Onayla</button>`;
-                            }
-
-                            tr.innerHTML = `
-                                <td class="p-4 font-medium text-white">${user.name}</td>
-                                <td class="p-4 text-slate-400">${user.email}</td>
-                                <td class="p-4">${statusBadge}</td>
-                                <td class="p-4 text-right">
-                                    ${actionBtn}
-                                    <button onclick="deleteUser('${user.email}')" class="text-red-400 hover:text-red-300 text-sm font-medium px-3 py-1 rounded border border-red-500/30 hover:bg-red-500/10 transition-all">
-                                        Sil
-                                    </button>
-                                </td>
-                            `;
-                            userListBody.appendChild(tr);
-                        });
+            // Load Users from LocalStorage
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('user_')) {
+                    try {
+                        const user = JSON.parse(localStorage.getItem(key));
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-slate-800/30 transition-colors";
+                        tr.innerHTML = `
+                            <td class="p-4 font-medium text-white">${user.name}</td>
+                            <td class="p-4 text-slate-400">${user.email}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="deleteUser('${key}')" class="text-red-400 hover:text-red-300 text-sm font-medium px-3 py-1 rounded border border-red-500/30 hover:bg-red-500/10 transition-all">
+                                    Sil
+                                </button>
+                            </td>
+                        `;
+                        userListBody.appendChild(tr);
+                    } catch (e) {
+                        console.error("Error parsing user data", e);
                     }
-                })
-                .catch(err => console.error('Failed to load users:', err));
+                }
+            });
         }
     }
-
-    // Expose actions to window
-    window.deleteUser = function (email) {
-        if (confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')) {
-            fetch('/api/users', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            }).then(res => {
-                if (res.ok) window.location.reload();
-                else alert('Silme işlemi başarısız');
-            });
-        }
-    };
-
-    window.approveUser = function (email) {
-        if (confirm('Bu kullanıcıyı onaylamak istiyor musunuz?')) {
-            fetch('/api/users', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, action: 'approve' })
-            }).then(res => {
-                if (res.ok) window.location.reload();
-                else alert('Onaylama işlemi başarısız');
-            });
-        }
-    };
 
     // Expose deleteUser to window so onclick works
     window.deleteUser = function (key) {
         if (confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')) {
             localStorage.removeItem(key);
             window.location.reload();
+        }
+    };
+
+    // Global Logout Function
+    window.logout = async function () {
+        if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
+            const { error } = await _supabase.auth.signOut();
+            if (error) {
+                console.error('Error logging out:', error);
+                // Force local cleanup anyway
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('userName');
+                localStorage.removeItem('userEmail');
+                window.location.href = 'index.html';
+            }
+            // onAuthStateChange will handle the redirect if successful
         }
     };
 
@@ -187,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Login Form Handler
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -223,35 +229,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     return; // Stop execution here for admin flow
                 }
 
-                // Get stored user data (Mock Database) - REPLACED WITH API LOGIN
-                fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                })
-                    .then(res => res.json().then(data => ({ status: res.status, body: data })))
-                    .then(({ status, body }) => {
-                        if (status === 200) {
-                            // Login Success
-                            localStorage.setItem('currentUser', body.user.name);
-                            localStorage.setItem('userName', body.user.name);
 
-                            const btn = loginForm.querySelector('button');
-                            btn.innerText = 'Giriş Yapılıyor...';
-                            btn.disabled = true;
+                // SUPABASE LOGIN
+                const btn = loginForm.querySelector('button');
+                const originalText = btn.innerText;
+                btn.innerText = 'Giriş Yapılıyor...';
+                btn.disabled = true;
 
-                            setTimeout(() => {
-                                window.location.href = 'home.html';
-                            }, 1000);
-                        } else {
-                            // Error (Invalid credentials or Not Verified)
-                            alert(body.error || 'Giriş başarısız!');
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Login error:', err);
-                        alert('Bir hata oluştu. Lütfen tekrar deneyin.');
-                    });
+                const { data, error } = await _supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    alert('Giriş başarısız: ' + error.message);
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                } else {
+                    // Success is handled by onAuthStateChange
+                    console.log('Login successful:', data);
+                }
             }
         });
     }
@@ -259,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Register Form Handler
     const registerForm = document.getElementById('register-form');
     if (registerForm) {
-        registerForm.addEventListener('submit', (e) => {
+        registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const nameInput = document.getElementById('name');
             const email = document.getElementById('email').value;
@@ -278,46 +275,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 3. User Existence Check
-            if (localStorage.getItem('user_' + email)) {
-                alert("Bu email adresi ile zaten bir kayıt mevcut!");
-                return;
-            }
-
-            // 4. Save User to API
+            // SUPABASE REGISTER
             const btn = registerForm.querySelector('button');
             const originalText = btn.innerText;
             btn.innerText = 'Kayıt Olunuyor...';
             btn.disabled = true;
 
-            fetch('/api/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: nameInput ? nameInput.value : 'Kullanıcı',
-                    email: email,
-                    password: password
-                })
-            })
-                .then(res => res.json().then(data => ({ status: res.status, body: data })))
-                .then(({ status, body }) => {
-                    if (status === 201) {
-                        // Success
-                        alert('Kayıt başarılı! Yönetici onayı bekleniyor. Onaylandığında giriş yapabileceksiniz.');
-                        window.location.href = 'index.html';
-                    } else {
-                        // Error
-                        alert('Kayıt hatası: ' + (body.error || 'Bilinmeyen hata'));
-                        btn.innerText = originalText;
-                        btn.disabled = false;
+            const { data, error } = await _supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        full_name: nameInput ? nameInput.value : ''
                     }
-                })
-                .catch(err => {
-                    console.error('Register error:', err);
-                    alert('Kayıt işlemi sırasında bir hata oluştu.');
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                });
+                }
+            });
+
+            if (error) {
+                alert('Kayıt başarısız: ' + error.message);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            } else {
+                alert('Kayıt başarılı! Lütfen email adresinizi doğrulayın.');
+                window.location.href = 'index.html';
+            }
         });
     }
 

@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kayıt Ol - Web Projesi</title>
+    <title>Kayıt Ol - Kamping Tasarım</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <script>
@@ -13,30 +14,19 @@
                 extend: {
                     colors: {
                         slate: {
-                            850: '#152033', // Custom darker slate
+                            850: '#152033',
                         }
                     }
                 }
             }
         }
     </script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <script type="text/javascript">
-            (function () {
-                // https://dashboard.emailjs.com/admin/account
-                // REPLACE "YOUR_PUBLIC_KEY" WITH YOUR ACTUAL PUBLIC KEY from EmailJS Account
-                emailjs.init("YOUR_PUBLIC_KEY");
-            })();
-    </script>
 </head>
 
-<body
-    class="h-screen w-full flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2672&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat relative">
+<body class="h-screen w-full flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2672&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat relative">
 
-    <!-- Dark Overlay -->
     <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"></div>
 
-    <!-- Register Container -->
     <div class="relative z-10 w-full max-w-md p-8 glass-panel rounded-2xl shadow-2xl fade-in mx-4">
         <div class="text-center mb-8">
             <h1 class="text-4xl font-bold gradient-text mb-2">Kayıt Ol</h1>
@@ -46,49 +36,43 @@
         <form id="register-form" class="space-y-6">
             <div>
                 <label for="name" class="block text-sm font-medium text-slate-300 mb-2">Ad Soyad</label>
-                <div class="relative">
-                    <input type="text" id="name" required
-                        class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-slate-500"
-                        placeholder="Adınız Soyadınız">
-                </div>
+                <input type="text" id="name" required
+                    class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    placeholder="Adınız Soyadınız">
             </div>
 
             <div>
                 <label for="email" class="block text-sm font-medium text-slate-300 mb-2">Email Adresi</label>
-                <div class="relative">
-                    <input type="email" id="email" required
-                        class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-slate-500"
-                        placeholder="ornek@domain.com">
-                </div>
+                <input type="email" id="email" required
+                    class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    placeholder="ornek@domain.com">
             </div>
 
             <div>
                 <label for="password" class="block text-sm font-medium text-slate-300 mb-2">Şifre</label>
                 <input type="password" id="password" required
-                    class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-slate-500"
+                    class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     placeholder="••••••••">
             </div>
 
             <div>
                 <label for="password-confirm" class="block text-sm font-medium text-slate-300 mb-2">Şifre Tekrar</label>
                 <input type="password" id="password-confirm" required
-                    class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder-slate-500"
+                    class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                     placeholder="••••••••">
             </div>
 
-            <button type="submit"
-                class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg hover:shadow-emerald-500/30 transform hover:-translate-y-0.5 transition-all duration-200">
+            <button type="submit" id="submit-btn"
+                class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg transform hover:-translate-y-0.5 transition-all duration-200">
                 Kayıt Ol
             </button>
         </form>
 
         <div class="mt-8 text-center text-sm text-slate-400">
-            Zaten hesabınız var mı? <a href="index.html" class="text-indigo-400 hover:text-indigo-300 font-medium">Giriş
-                Yap</a>
+            Zaten hesabınız var mı? <a href="index.html" class="text-indigo-400 hover:text-indigo-300 font-medium">Giriş Yap</a>
         </div>
     </div>
 
     <script src="app.js"></script>
 </body>
-
 </html>
