@@ -270,20 +270,31 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.innerText = 'Kayıt Olunuyor...';
             btn.disabled = true;
 
+            // Generate Verification Link (Pointing to Vercel App)
+            // CHANGE THIS URL IF YOUR DOMAIN CHANGES
+            const APP_URL = "https://kamptasar.vercel.app";
+            const verifyLink = `${APP_URL}/verify-email.html?email=${encodeURIComponent(email)}&verify=true`;
+
             // Parameters matching your EmailJS template
             const templateParams = {
                 to_email: email,
                 from_name: "Web Projesi",
-                message: "Hesabınız başarıyla oluşturuldu. Lütfen doğrulama yapın.",
-                to_name: newUser.name
+                message: "Hesabınız başarıyla oluşturuldu. Lütfen aşağıdaki linke tıklayarak doğrulama yapın.",
+                to_name: newUser.name,
+                verify_link: verifyLink // Make sure your EmailJS template has {{verify_link}} variable!
             };
 
-            // REPLACE WITH YOUR SERVICE ID AND TEMPLATE ID
-            const SERVICE_ID = "YOUR_SERVICE_ID";
-            const TEMPLATE_ID = "YOUR_TEMPLATE_ID";
+            // REPLACE WITH YOUR REAL EMAILJS KEYS
+            // Get these from https://dashboard.emailjs.com/admin
+            const SERVICE_ID = "YOUR_SERVICE_ID";   // e.g., "service_gmail"
+            const TEMPLATE_ID = "YOUR_TEMPLATE_ID"; // e.g., "template_welcome"
 
             if (SERVICE_ID === "YOUR_SERVICE_ID") {
                 console.warn("EmailJS Keys eksik! Mock modunda çalışıyor.");
+                alert("Geliştirici Notu: EmailJS Keyleri app.js dosyasında ayarlanmamış! Konsoldan linki alabilirsiniz.");
+                console.log("Doğrulama Linki:", verifyLink);
+
+                // For testing/mocking without keys, redirect to mock verify page
                 setTimeout(() => {
                     window.location.href = `verify-email.html?email=${encodeURIComponent(email)}`;
                 }, 1000);
@@ -293,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
             emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams)
                 .then(function () {
                     console.log('Email sent successfully!');
+                    // Redirect to verification page but instruct user to check email
                     window.location.href = `verify-email.html?email=${encodeURIComponent(email)}`;
                 }, function (error) {
                     console.error('Email sending failed:', error);
